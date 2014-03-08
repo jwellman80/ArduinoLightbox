@@ -58,7 +58,7 @@ enum shutterStatuses
 };
 
 
-int deviceId = FLIP_FLAT;
+int deviceId = FLAT_MAN;
 int motorStatus = STOPPED;
 int lightStatus = OFF;
 int coverStatus = UNKNOWN;
