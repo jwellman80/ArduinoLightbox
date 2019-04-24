@@ -27,7 +27,11 @@ Send     : >D000\n      //turn light off (brightness value should not be changed
 Recieve  : *D19000\n    //confirms light turned off.
 */
 
-volatile int ledPin = 13;      // the pin that the LED is attached to, needs to be a PWM pin.
+#include <Servo.h>
+Servo myservo;
+
+volatile int ledPin   = 6;      // the pin that the LED is attached to, needs to be a PWM pin.
+volatile int servoPin = 9;      // the pin that the servo signal is attached to, needs to be a PWM pin.
 int brightness = 0;
 
 enum devices
@@ -58,7 +62,7 @@ enum shutterStatuses
 };
 
 
-int deviceId = FLAT_MAN;
+int deviceId = FLIP_FLAT;
 int motorStatus = STOPPED;
 int lightStatus = OFF;
 int coverStatus = UNKNOWN;
@@ -70,6 +74,7 @@ void setup()
   // initialize the ledPin as an output:
   pinMode(ledPin, OUTPUT);
   analogWrite(ledPin, 0);
+  myservo.attach(servoPin);
 }
 
 void loop() 
@@ -80,7 +85,7 @@ void loop()
 
 void handleSerial()
 {
-  if( Serial.available() >= 6 )  // all incoming communications are fixed length at 6 bytes including the \n
+  if( Serial.available() >= 5 )  // all incoming communications are fixed length at 6 bytes including the \n
   {
     char* cmd;
 	char* data;
@@ -101,7 +106,7 @@ void handleSerial()
 	// useful for debugging to make sure your commands came through and are parsed correctly.
     if( false )
     {
-      sprintf( temp, "cmd = >%c%s;", cmd, data);
+      sprintf( temp, "cmd = >%s%s;", cmd, data);
       Serial.println(temp);
     } 
     
@@ -116,8 +121,8 @@ void handleSerial()
 				id = deviceId
 	  */
       case 'P':
-		  sprintf(temp, "*P%d000", deviceId);
-		  Serial.println(temp);
+		  sprintf(temp, "*P%d000\n", deviceId);
+		  Serial.print(temp);
 		  break;
 
       /*
@@ -129,9 +134,9 @@ void handleSerial()
 			This command is only supported on the Flip-Flat!
 	  */
       case 'O':
-		  sprintf(temp, "*O%d000", deviceId);
+		  sprintf(temp, "*O%d000\n", deviceId);
 		  SetShutter(OPEN);
-		  Serial.println(temp);
+		  Serial.print(temp);
 		  break;
 
 
@@ -144,9 +149,9 @@ void handleSerial()
 			This command is only supported on the Flip-Flat!
 	  */
       case 'C':
-		  sprintf(temp, "*C%d000", deviceId);
+		  sprintf(temp, "*C%d000\n", deviceId);
 		  SetShutter(CLOSED);
-		  Serial.println(temp);
+		  Serial.print(temp);
 		  break;
 
 	  /*
@@ -156,8 +161,8 @@ void handleSerial()
 				id = deviceId
 	  */
       case 'L':
-		  sprintf(temp, "*L%d000", deviceId);
-		  Serial.println(temp);
+		  sprintf(temp, "*L%d000\n", deviceId);
+		  Serial.print(temp);
 		  lightStatus = ON;
 		  analogWrite(ledPin, brightness);
 		  break;
@@ -169,8 +174,8 @@ void handleSerial()
 				id = deviceId
 	  */
       case 'D':
-		  sprintf(temp, "*D%d000", deviceId);
-		  Serial.println(temp);
+		  sprintf(temp, "*D%d000\n", deviceId);
+		  Serial.print(temp);
 		  lightStatus = OFF;
 		  analogWrite(ledPin, 0);
 		  break;
@@ -187,8 +192,8 @@ void handleSerial()
 		  brightness = atoi(data);    
 		  if( lightStatus == ON ) 
 			  analogWrite(ledPin, brightness);   
-		  sprintf( temp, "*B%d%03d", deviceId, brightness );
-		  Serial.println(temp);
+		  sprintf( temp, "*B%d%03d\n", deviceId, brightness );
+		  Serial.print(temp);
         break;
 
 	  /*
@@ -199,8 +204,8 @@ void handleSerial()
 				yyy = current brightness value from 000-255
 	  */
       case 'J':
-        sprintf( temp, "*J%d%03d", deviceId, brightness);
-        Serial.println(temp);
+        sprintf( temp, "*J%d%03d\n", deviceId, brightness);
+        Serial.print(temp);
         break;
       
 	  /*
@@ -213,8 +218,8 @@ void handleSerial()
 				C  = Cover Status( 0 moving, 1 closed, 2 open)
 	  */
       case 'S': 
-        sprintf( temp, "*S%d%d%d%d",deviceId, motorStatus, lightStatus, coverStatus);
-        Serial.println(temp);
+        sprintf( temp, "*S%d%d%d%d\n",deviceId, motorStatus, lightStatus, coverStatus);
+        Serial.print(temp);
         break;
 
 	  /*
@@ -224,8 +229,8 @@ void handleSerial()
 				id = deviceId
 	  */
       case 'V': // get firmware version
-		  sprintf(temp, "*V%d001", deviceId);
-		  Serial.println(temp);
+		  sprintf(temp, "*V%d001\n", deviceId);
+		  Serial.print(temp);
 		  break;
     }    
 
@@ -239,11 +244,33 @@ void SetShutter(int val)
 {
 	if( val == OPEN && coverStatus != OPEN )
 	{
+    for (int angle = 0; angle <= 30; angle+=1) 
+    {
+      myservo.write (angle);
+      delay (70);
+    } 
+    myservo.write (150);
+    for (int angle = 150; angle <= 180; angle+=1) 
+    {
+      myservo.write (angle);
+      delay (70);
+    } 
 		coverStatus = OPEN;
 		// TODO: Implement code to OPEN the shutter.
 	}
 	else if( val == CLOSED && coverStatus != CLOSED )
 	{
+    for (int angle = 180; angle > 150; angle-=1) 
+    {
+      myservo.write (angle);
+      delay (70);
+    }   
+    myservo.write (30);  
+    for (int angle = 30; angle > 0; angle-=1) 
+    {
+      myservo.write (angle);
+      delay (70);
+    } 
 		coverStatus = CLOSED;
 		// TODO: Implement code to CLOSE the shutter
 	}
